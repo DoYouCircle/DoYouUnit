@@ -45,23 +45,33 @@ namespace DoYouUnit
 
 		private List<string> ResolveExponents(List<string> input)
 		{
-			/// Converting exponents (^2, ^3, ...) to multiplications
+			// Converting exponents (^2, ^3, ...) to multiplications
 
 			for (int i = 0; i < input.Count; i++)
 			{
 				if (input[i] == "^")
 				{
 					string exponent_base = input[i - 1];
-					int exponent = Convert.ToInt32(input[i + 1]);
+					string exponent_raw = input[i + 1];
 
-					if (exponent > 1)
-					{
-						// replace ^ by * and add multiplications
-						input[i] = "*";
-						input[i + 1] = string.Concat(Enumerable.Repeat(exponent_base + '*', exponent - 1));
-						input[i + 1] = input[i + 1].Remove(input[i + 1].Length - 1);
+					// We try to convert the exponent to an int
+					// If it fails we shout at the user
+					try
+                    {
+						int exponent = Convert.ToInt32(exponent_raw);
+
+						if (exponent > 1)
+						{
+							// replace ^ by * and add multiplications
+							input[i] = "*";
+							exponent_raw = string.Concat(Enumerable.Repeat(exponent_base + '*', exponent - 1));
+							exponent_raw = exponent_raw.Remove(exponent_raw.Length - 1);
+						}
 					}
-
+                    catch (FormatException)
+                    {
+						Console.WriteLine("The {0} value '{1}' is not in a recognizable format. Use a natural number!", exponent_raw.GetType().Name, exponent_raw);
+					}
 				}
 			}
 
