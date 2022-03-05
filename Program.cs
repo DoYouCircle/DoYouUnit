@@ -5,8 +5,18 @@ using System.Text.RegularExpressions;
 
 namespace DoYouUnit
 {
+
 	class Unit
 	{
+		Dictionary<string, string> SIUnits = new Dictionary<string, string>()
+		{
+			{"N", "kg*m/s/s" },
+			{"J", "kg*m*m/s/s" },
+			{"W", "Kg*m*m/s/s/s" },
+			{"C", "A*s" },
+			{"T", "kg/A/s/s" },
+		};
+
 		public List<string> numerator = new List<string>();
 		public List<string> denominator = new List<string>();
 
@@ -19,11 +29,14 @@ namespace DoYouUnit
 			Console.WriteLine("Input: " + String.Join(" ", input_list));
 			input_list = ResolveExponents(input_list);
 			input_list = ResolveParentheses(input_list);
+			input_list = ConvertToSIUnits(input_list);
 			Console.WriteLine("Parsed: " + String.Join(" ", input_list));
 			ParseUnit(input_list);
 
-			Console.WriteLine("Numerator:  " + String.Join(" ", numerator));
-			Console.WriteLine("Denominator:  " + String.Join(" ", denominator));
+			CancelTerms();
+			Console.WriteLine("=> Canceled:");
+			Console.WriteLine("   Numerator:  " + String.Join(" ", numerator));
+			Console.WriteLine("   Denominator:  " + String.Join(" ", denominator));
 			Console.WriteLine("\n");
 		}
 
@@ -51,27 +64,48 @@ namespace DoYouUnit
 			{
 				if (input[i] == "^")
 				{
+					string multiplicationOrDivision = "*";
+					if (i > 1)
+					{
+						if (input[i - 2] == "(")
+						{
+							multiplicationOrDivision = "*";
+						}
+						else if (input[i - 2] == "*")
+						{
+							multiplicationOrDivision = "*";
+						}
+						else if (input[i - 2] == "/")
+						{
+							multiplicationOrDivision = "/";
+						}
+						else
+						{
+							throw new Exception("Wrong exponentiation syntax");
+						}
+						
+					}
+						
 					string exponent_base = input[i - 1];
 					string exponent_raw = input[i + 1];
+					int exponent = 1; //initialize with default value
 
-					// We try to convert the exponent to an int
-					// If it fails we shout at the user
-					try
-                    {
-						int exponent = Convert.ToInt32(exponent_raw);
-
-						if (exponent > 1)
-						{
-							// replace ^ by * and add multiplications
-							input[i] = "*";
-							exponent_raw = string.Concat(Enumerable.Repeat(exponent_base + '*', exponent - 1));
-							exponent_raw = exponent_raw.Remove(exponent_raw.Length - 1);
-						}
-					}
-                    catch (FormatException)
-                    {
+					try {
+						exponent = Convert.ToInt32(exponent_raw);
+					} catch (FormatException)
+					{
 						Console.WriteLine("The {0} value '{1}' is not in a recognizable format. Use a natural number!", exponent_raw.GetType().Name, exponent_raw);
 					}
+
+
+					if (exponent > 1)
+					{
+						// replace ^ by * and add multiplications
+						input[i] = multiplicationOrDivision;
+						input[i + 1] = string.Concat(Enumerable.Repeat(exponent_base + multiplicationOrDivision, exponent - 1));
+						input[i + 1] = input[i + 1].Remove(input[i + 1].Length - 1);
+					}
+
 				}
 			}
 
@@ -79,6 +113,22 @@ namespace DoYouUnit
 			string t = string.Join("", input.ToArray());
 			return ListCleanup(ParseMath(t));
 		}
+
+
+		private List<string> ConvertToSIUnits(List<string> input)
+		{
+			for (int i = 0; i < input.Count; i++)
+			{
+				if (SIUnits.ContainsKey(input[i]))
+				{
+					input[i] = SIUnits[input[i]];
+				}
+			}
+
+			string t = string.Join("", input.ToArray());
+			return ListCleanup(ParseMath(t));
+		}
+
 
 		private bool isDivision(List<bool> l)
 		{
@@ -150,6 +200,18 @@ namespace DoYouUnit
 					numerator.Add(input[i]);
 				else if (input[i - 1] == "/")
 					denominator.Add(input[i]);
+			}
+		}
+
+		private void CancelTerms()
+		{
+			for (int i = numerator.Count - 1; i>=0; i--)
+			{
+				if (denominator.Contains(numerator[i]))
+				{
+					denominator.Remove(numerator[i]);
+					numerator.RemoveAt(i);
+				}
 			}
 		}
 	}
